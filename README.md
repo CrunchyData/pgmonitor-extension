@@ -10,6 +10,8 @@ Requirement:
 
  * PostgreSQL >= 12
 
+NOTE: Prior to the 1.0.0 release, there will be no upgrade paths between versions of the extension. This is a period of pre-release testing and will require reinstalling to update. After 1.0.0, all upgrades will be provided an extension upgrade file.
+
 ### From Source
 In the directory where you downloaded pgmonitor, run
 
