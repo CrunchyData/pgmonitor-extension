@@ -1,0 +1,3 @@
+default_version = '0.0.1'
+comment = 'Extension to provide PostgreSQL metrics for external collectors'
+relocatable = false
