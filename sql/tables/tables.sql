@@ -5,6 +5,7 @@ CREATE TABLE @extschema@.metric_views (
     , concurrent_refresh boolean NOT NULL DEFAULT true
     , run_interval interval NOT NULL DEFAULT '10 minutes'::interval
     , last_run timestamptz
+    , last_run_time interval
     , active boolean NOT NULL DEFAULT true
     , scope text NOT NULL default 'global'
     , CONSTRAINT metric_views_pk PRIMARY KEY (view_schema, view_name)
@@ -24,6 +25,7 @@ CREATE TABLE @extschema@.metric_tables (
     , refresh_statement text NOT NULL
     , run_interval interval NOT NULL DEFAULT '10 minutes'::interval
     , last_run timestamptz
+    , last_run_time interval
     , active boolean NOT NULL DEFAULT true
     , scope text NOT NULL default 'global'
     , CONSTRAINT metric_tables_pk PRIMARY KEY (table_schema, table_name)
