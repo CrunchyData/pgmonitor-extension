@@ -197,7 +197,6 @@ END
 $function$;
 
 
---TODO make sure this is only usable on PG12+
 CREATE FUNCTION @extschema@.pg_hba_checksum(p_known_hba_hash text DEFAULT NULL) 
     RETURNS smallint
     LANGUAGE plpgsql SECURITY DEFINER 
@@ -467,21 +466,28 @@ CREATE FUNCTION @extschema@.refresh_metrics_legacy (p_object_schema text DEFAULT
     AS $function$
 DECLARE
 
+v_adv_lock                      boolean;
 v_loop_sql                      text;
-v_refresh_statement     text;
+v_refresh_statement             text;
 v_refresh_sql                   text;
 v_row                           record;
+v_runtime                       interval;
+v_start_runtime                 timestamptz;
+v_stop_runtime                  timestamptz;
 
 BEGIN
 /* 
  * Function version of refresh_metrics() procedure for PG versions less than 14 that cannot be called via BGW 
  */
 
--- TODO Add advisory lock to avoid stacking concurrent runs. Throw a warning in logs that if it's happening repeatedly, adjust the BGW interval
--- TODO Record the runtime of each objects refresh time. Note that for <=PG13 that runtime is cumulative time for ALL metrics since it's one huge transaction
-
 IF pg_catalog.pg_is_in_recovery() = TRUE THEN
     RAISE DEBUG 'Database instance in recovery mode. Exiting without view refresh';
+    RETURN;
+END IF;
+
+v_adv_lock := pg_catalog.pg_try_advisory_lock(hashtext('pgmonitor refresh call'));
+IF v_adv_lock = false THEN
+    RAISE WARNING 'pgMonitor extension refresh already running or another session has not released its advisory lock. If you are seeing this warning repeatedly, try adjusting the interval that this procedure is called or check the runtime of refresh jobs for long runtimes.';
     RETURN;
 END IF;
 
@@ -495,7 +501,11 @@ IF p_object_name IS NOT NULL THEN
     v_loop_sql := format('%s AND view_schema = %L AND view_name = %L', v_loop_sql, p_object_schema, p_object_name);
 END IF;
 
+
 FOR v_row IN EXECUTE v_loop_sql LOOP
+
+    v_start_runtime := clock_timestamp();
+    v_stop_runtime := NULL;
 
     v_refresh_sql := 'REFRESH MATERIALIZED VIEW ';
     IF v_row.concurrent_refresh THEN
@@ -505,8 +515,11 @@ FOR v_row IN EXECUTE v_loop_sql LOOP
     RAISE DEBUG 'pgmonitor view refresh: %', v_refresh_sql;
     EXECUTE v_refresh_sql;
 
+    v_stop_runtime := clock_timestamp();
+    v_runtime = v_stop_runtime - v_start_runtime;
+
     UPDATE @extschema@.metric_views
-    SET last_run = CURRENT_TIMESTAMP
+    SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
     WHERE view_schema = v_row.view_schema
     AND view_name = v_row.view_name;
 
@@ -523,14 +536,23 @@ END IF;
 
 FOR v_row IN EXECUTE v_loop_sql LOOP
     RAISE DEBUG 'pgmonitor table refresh: %', v_row.refresh_statement;
+
+    v_start_runtime := clock_timestamp();
+    v_stop_runtime := NULL;
+
     EXECUTE format(v_row.refresh_statement);
 
+    v_stop_runtime := clock_timsetamp();
+    v_runtime = v_stop_runtime - v_start_runtime;
+
     UPDATE @extschema@.metric_tables
-    SET last_run = CURRENT_TIMESTAMP
+    SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
     WHERE table_schema = v_row.table_schema
     AND table_name = v_row.table_name;
 
 END LOOP;
+
+PERFORM pg_catalog.pg_advisory_unlock(hashtext('pgmonitor refresh call'));
 
 RETURN;
 END
