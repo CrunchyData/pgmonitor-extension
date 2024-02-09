@@ -542,7 +542,7 @@ FOR v_row IN EXECUTE v_loop_sql LOOP
 
     EXECUTE format(v_row.refresh_statement);
 
-    v_stop_runtime := clock_timsetamp();
+    v_stop_runtime := clock_timestamp();
     v_runtime = v_stop_runtime - v_start_runtime;
 
     UPDATE @extschema@.metric_tables
