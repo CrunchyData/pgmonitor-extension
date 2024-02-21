@@ -55,15 +55,16 @@ Log into PostgreSQL and run the following commands. Schema is optional (but reco
 
 The names of all views and materialized views are stored in the `metric_views` configuration table. The extension itself does not touch normal views as part of any maintenance; they are stored together with the materialized views so that external scrape tools can more easily find all view based metrics in one table.
 ```
-                                Table "metric_views"
-       Column       |           Type           | Collation | Nullable |       Default        
---------------------+--------------------------+-----------+----------+----------------------
+                              Table "pgmonitor_ext.metric_views"
+       Column       |           Type           | Collation | Nullable |        Default        
+--------------------+--------------------------+-----------+----------+-----------------------
  view_schema        | text                     |           | not null | 'pgmonitor_ext'::text
  view_name          | text                     |           | not null | 
  materialized_view  | boolean                  |           | not null | true
  concurrent_refresh | boolean                  |           | not null | true
  run_interval       | interval                 |           | not null | '00:10:00'::interval
  last_run           | timestamp with time zone |           |          | 
+ last_run_time      | interval                 |           |          | 
  active             | boolean                  |           | not null | true
  scope              | text                     |           | not null | 'global'::text
 ```
@@ -80,6 +81,8 @@ The names of all views and materialized views are stored in the `metric_views` c
     - How often the materalized view should be refreshed. Must be a valid value of the PostgreSQL interval type
  - `last_run`
     - Timestamp of the last time this materalized view was refreshed
+ - `last_run_time`
+    - How long the last run of this refresh took
  - `active`
     - If a materalized view, determines whether it should be refreshed as part of automatic maintainance
     - Both matviews and normal views can also set this to be false as a means of allowing external scrape tools to ignore them
@@ -91,7 +94,7 @@ The names of all views and materialized views are stored in the `metric_views` c
 
 For metrics that still require storage of results for fast scraping but cannot use a materialized view, it is also possible to use a table and give pgMonitor an SQL statement to run to refresh that table. For example, the included pgBackRest metrics need to use a function that uses a COPY statement.
 ```
-                             Table "metric_tables"
+                             Table "pgmonitor_ext.metric_tables"
       Column       |           Type           | Collation | Nullable |        Default        
 -------------------+--------------------------+-----------+----------+-----------------------
  table_schema      | text                     |           | not null | 'pgmonitor_ext'::text
@@ -99,6 +102,7 @@ For metrics that still require storage of results for fast scraping but cannot u
  refresh_statement | text                     |           | not null | 
  run_interval      | interval                 |           | not null | '00:10:00'::interval
  last_run          | timestamp with time zone |           |          | 
+ last_run_time     | interval                 |           |          | 
  active            | boolean                  |           | not null | true
  scope             | text                     |           | not null | 'global'::text
 ```
@@ -113,7 +117,6 @@ For metrics that still require storage of results for fast scraping but cannot u
 
 TODO:
 
-- Add matview refresh last runtime to config table
 - Document other objects
 
 NORMAL VIEWS:
@@ -130,6 +133,12 @@ ccp_connection_stats
 ccp_replication_lag_size
 ccp_replication_slots
 ccp_data_checksum_failure
+ccp_pg_stat_statements_reset
+ccp_backrest_last_info
+ccp_backrest_oldest_full_backup
+ccp_backrest_last_full_backup
+ccp_backrest_last_diff_backup
+ccp_backrest_last_incr_backup
 ```
 
 MAT VIEWS:
@@ -151,7 +160,7 @@ TABLES:
 pg_settings_checksum
 pg_hba_checksum
 pg_stat_statements_reset_info 
-```
+pgbackrest_info
 
 FUNCTIONS:
 ```
@@ -165,5 +174,5 @@ pg_stat_statements_reset_info(p_throttle_minutes integer DEFAULT 1440)
 ```
 PROCEDURE:
 ```
-refresh_metric_views (p_view_schema text DEFAULT 'monitor', p_view_name text DEFAULT NULL)
+refresh_metrics (p_object_schema text DEFAULT 'monitor', p_object_name text DEFAULT NULL)
 ```
