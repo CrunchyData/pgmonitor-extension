@@ -2,15 +2,15 @@
 
 ## Overview
 
-This extension provides a means to collect metrics within a PostgreSQL database to be used by an external collection source (Prometheus exporter, Icinga/Nagios scraper, etc). Certain metrics are collected, their results stored as materialized views and refreshed on a per-query configurable timer. This allows the metric scraper to not have to be concerned about the underlying runtime of some queries that can be more expensive, especially as the size of the database grows (object size, table statistics, etc). A background worker is provided to refresh the materialized views automatically without the need for any third-party schedulers. 
+This extension provides a means to collect metrics within a PostgreSQL database to be used by an external collection source (Prometheus exporter, Icinga/Nagios scraper, etc). Certain metrics are collected, their results stored as materialized views or tables, and refreshed on a per-query configurable timer. This allows the metric scraper to not have to be concerned about the underlying runtime of queries that can be more expensive, especially as the size of the database grows (object size, table statistics, etc). It also allows a functional interface for some metrics to account for differences in underlying system catalogs between PostgreSQL major versions (Ex. new columns in pg_stat_activity, pg_stat_statements).
+
+A background worker is provided to refresh the materialized views and tables automatically without the need for any third-party schedulers. 
 
 ## INSTALLATION
 
 Requirement: 
 
  * PostgreSQL >= 12
-
-NOTE: Prior to the 1.0.0 release, there will be no upgrade paths between versions of the extension. This is a period of pre-release testing and will require reinstalling to update. After 1.0.0, all upgrades will be provided an extension upgrade file.
 
 ### From Source
 In the directory where you downloaded pgmonitor, run
@@ -42,7 +42,7 @@ At this time `pgmonitor_bgw.role` must be a superuser due to elevated privileges
 
     pgmonitor_bgw.role = 'postgres'
 
-The interval defaults to 30 seconds and generally doesn't need to be changed. If you're trying to adjust materialized view refresh timing, see the `metric_views` configuration table below.
+The interval defaults to 30 seconds and generally doesn't need to be changed. If you're trying to adjust materialized view or tables refresh timing, see the configuration tables below.
 
     pgmonitor_bgw.interval = 30
 
@@ -84,7 +84,7 @@ The names of all views and materialized views are stored in the `metric_views` c
  - `last_run_time`
     - How long the last run of this refresh took
  - `active`
-    - If a materalized view, determines whether it should be refreshed as part of automatic maintainance
+    - If view_name is a materalized view, determines whether it should be refreshed as part of automatic maintainance
     - Both matviews and normal views can also set this to be false as a means of allowing external scrape tools to ignore them
  - `scope`
     - Valid values are "global" or "database"
@@ -115,10 +115,6 @@ For metrics that still require storage of results for fast scraping but cannot u
     - The full SQL statement that is run to refresh the data in `table_name`. Ex: `SELECT pgmonitor_ext.pgbackrest_info()`
  - See `metric_views` for purpose of remaining columns
 
-TODO:
-
-- Document other objects
-
 NORMAL VIEWS:
 ```
 ccp_is_in_recovery
@@ -133,6 +129,8 @@ ccp_connection_stats
 ccp_replication_lag_size
 ccp_replication_slots
 ccp_data_checksum_failure
+ccp_locks 
+ccp_wal_activity
 ccp_pg_stat_statements_reset
 ccp_backrest_last_info
 ccp_backrest_oldest_full_backup
@@ -146,13 +144,11 @@ MAT VIEWS:
 ccp_stat_user_tables
 ccp_table_size
 ccp_database_size
-ccp_locks
 ccp_stat_bgwriter
 ccp_stat_database
 ccp_sequence_exhaustion
 ccp_pg_settings_checksum
 ccp_pg_hba_checksum
-ccp_wal_activity
 ```
 
 TABLES:
