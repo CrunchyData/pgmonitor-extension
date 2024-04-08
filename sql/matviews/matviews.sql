@@ -65,37 +65,6 @@ VALUES (
     , 'global');
 
 
-CREATE MATERIALIZED VIEW @extschema@.ccp_locks AS 
-    SELECT pg_database.datname as dbname
-    , tmp.mode
-    , COALESCE(count,0) as count
-    FROM
-    (
-      VALUES ('accesssharelock'),
-             ('rowsharelock'),
-             ('rowexclusivelock'),
-             ('shareupdateexclusivelock'),
-             ('sharelock'),
-             ('sharerowexclusivelock'),
-             ('exclusivelock'),
-             ('accessexclusivelock')
-    ) AS tmp(mode) CROSS JOIN pg_catalog.pg_database
-    LEFT JOIN
-        (SELECT database, lower(mode) AS mode,count(*) AS count
-        FROM pg_catalog.pg_locks WHERE database IS NOT NULL
-        GROUP BY database, lower(mode)
-    ) AS tmp2
-    ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database;
-CREATE UNIQUE INDEX ccp_locks_idx ON @extschema@.ccp_locks (dbname, mode);
-INSERT INTO @extschema@.metric_views (
-    view_name 
-    , run_interval
-    , scope )
-VALUES (
-   'ccp_locks'
-    , '1 minute'::interval
-    , 'global');
-
 
 CREATE MATERIALIZED VIEW @extschema@.ccp_stat_bgwriter AS
     SELECT checkpoints_timed
@@ -188,20 +157,5 @@ INSERT INTO @extschema@.metric_views (
 VALUES (
    'ccp_pg_hba_checksum'
     , '5 minutes'::interval
-    , 'global');
-
-
-CREATE MATERIALIZED VIEW @extschema@.ccp_wal_activity AS
-    SELECT last_5_min_size_bytes,
-      (SELECT COALESCE(sum(size),0) FROM pg_catalog.pg_ls_waldir()) AS total_size_bytes
-      FROM (SELECT COALESCE(sum(size),0) AS last_5_min_size_bytes FROM pg_catalog.pg_ls_waldir() WHERE modification > CURRENT_TIMESTAMP - '5 minutes'::interval) x;
-CREATE UNIQUE INDEX ccp_wal_activity_idx ON @extschema@.ccp_wal_activity (last_5_min_size_bytes, total_size_bytes);
-INSERT INTO @extschema@.metric_views (
-    view_name 
-    , run_interval
-    , scope )
-VALUES (
-   'ccp_wal_activity'
-    , '2 minutes'::interval
     , 'global');
 

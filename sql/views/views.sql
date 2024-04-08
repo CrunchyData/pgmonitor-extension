@@ -1,7 +1,3 @@
--- TODO Create sub-extension for bloat support
-    -- dependency on pgmonitor extension
-    -- require that schema install path must match. Do a check in "first" sql file that checks to make sure @extschema@ matches pgmonitor's schema
-
 
 /**** metric views ****/
 CREATE VIEW @extschema@.ccp_is_in_recovery AS
@@ -161,7 +157,6 @@ VALUES (
     , 'global');
 
 
-
 -- Must be able to get replica stats (cascading replicas), so cannot be matview
 CREATE VIEW @extschema@.ccp_replication_lag_size AS
     SELECT client_addr AS replica
@@ -191,6 +186,7 @@ VALUES (
     , false    
     , 'global');
 
+
 -- Did not make as a matview since this is a critical metric to always be sure is current
 CREATE VIEW @extschema@.ccp_data_checksum_failure AS
     SELECT datname AS dbname
@@ -206,7 +202,54 @@ VALUES (
     , false    
     , 'global');
 
--- TODO test this
+
+-- Locks can potentially be different on replicas
+CREATE VIEW @extschema@.ccp_locks AS 
+    SELECT pg_database.datname as dbname
+    , tmp.mode
+    , COALESCE(count,0) as count
+    FROM
+    (
+      VALUES ('accesssharelock'),
+             ('rowsharelock'),
+             ('rowexclusivelock'),
+             ('shareupdateexclusivelock'),
+             ('sharelock'),
+             ('sharerowexclusivelock'),
+             ('exclusivelock'),
+             ('accessexclusivelock')
+    ) AS tmp(mode) CROSS JOIN pg_catalog.pg_database
+    LEFT JOIN
+        (SELECT database, lower(mode) AS mode,count(*) AS count
+        FROM pg_catalog.pg_locks WHERE database IS NOT NULL
+        GROUP BY database, lower(mode)
+    ) AS tmp2
+    ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database;
+INSERT INTO @extschema@.metric_views (
+    view_name 
+    , materialized_view
+    , scope )
+VALUES (
+   'ccp_locks'
+    , false
+    , 'global');
+
+
+-- WAL activity could be different on replica
+CREATE VIEW @extschema@.ccp_wal_activity AS
+    SELECT last_5_min_size_bytes,
+      (SELECT COALESCE(sum(size),0) FROM pg_catalog.pg_ls_waldir()) AS total_size_bytes
+      FROM (SELECT COALESCE(sum(size),0) AS last_5_min_size_bytes FROM pg_catalog.pg_ls_waldir() WHERE modification > CURRENT_TIMESTAMP - '5 minutes'::interval) x;
+INSERT INTO @extschema@.metric_views (
+    view_name 
+    , materialized_view
+    , scope )
+VALUES (
+   'ccp_wal_activity'
+    , false
+    , 'global');
+
+
 -- Enabling this metric this view will reset the pg_stat_statements statistics based on 
 --   the run_interval set in metric_views
 CREATE VIEW @extschema@.ccp_pg_stat_statements_reset AS
@@ -224,8 +267,9 @@ VALUES (
     , 'global'
     , false );
 
+
 -- pgBackRest views
--- All backrest data is pulled from a refreshed table
+-- All backrest data is pulled from a refreshed table so no need for individual view entries in config table
 CREATE VIEW @extschema@.ccp_backrest_last_info AS
     WITH all_backups AS (
       SELECT config_file
@@ -349,4 +393,3 @@ CREATE VIEW @extschema@.ccp_backrest_last_incr_backup AS
     FROM per_stanza
     WHERE backup_data->>'type' IN ('full', 'diff', 'incr')
     GROUP BY config_file, stanza, backup_data->'database'->>'repo-key';
-
