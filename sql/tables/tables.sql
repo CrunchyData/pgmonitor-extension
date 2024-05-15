@@ -71,7 +71,7 @@ ALTER TABLE @extschema@.pg_hba_checksum SET (
 
 
 CREATE TABLE @extschema@.pg_stat_statements_reset_info(
-   reset_time timestamptz 
+   reset_time timestamptz
 );
 
 -- Backrest objects
@@ -96,10 +96,10 @@ VALUES (
     , '10 minutes'
     , false
 );
-    
+
 
 --TODO create prometheus metrics table to match columns to Prometheus output formatting info. better table name?
--- Use jsonb to allow full flexiblity for whatever upstream may need to have set for metric output
+-- Use jsonb to allow full flexibility for whatever upstream may need to have set for metric output
 /*
  CREATE TABLE @extschema@.prometheus_metric_details (
     view_schema text NOT NULL
@@ -108,7 +108,7 @@ VALUES (
     , CONSTRAINT prometheus_metric_details_pk PRIMARY KEY (view_schema, view_name);
 
 -- I know this isn't valid json. will look it up
-INSERT INTO @extschema@.prometheus_metric_details (view_schema, view_name, column_details) 
+INSERT INTO @extschema@.prometheus_metric_details (view_schema, view_name, column_details)
 VALUES ('monitor'
         , 'ccp_connection_stats'
         , '{ "active" => { "TYPE stuff", "HELP stuff" }

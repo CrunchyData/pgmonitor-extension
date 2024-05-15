@@ -43,7 +43,7 @@ IF current_setting('server_version_num')::int >= 160000 THEN
         , p.vacuum_count
         , p.autovacuum_count
         , p.analyze_count
-        , p.autoanalyze_count 
+        , p.autoanalyze_count
       FROM pg_catalog.pg_stat_user_tables p;
 ELSE
     RETURN QUERY SELECT
@@ -63,7 +63,7 @@ ELSE
         , p.vacuum_count
         , p.autovacuum_count
         , p.analyze_count
-        , p.autoanalyze_count 
+        , p.autoanalyze_count
       FROM pg_catalog.pg_stat_user_tables p;
 END IF;
 
@@ -73,7 +73,7 @@ $function$;
 
 DROP MATERIALIZED VIEW @extschema@.ccp_stat_user_tables;
 
-CREATE MATERIALIZED VIEW @extschema@.ccp_stat_user_tables AS 
+CREATE MATERIALIZED VIEW @extschema@.ccp_stat_user_tables AS
     SELECT current_database() as dbname
     , schemaname
     , relname
@@ -91,6 +91,6 @@ CREATE MATERIALIZED VIEW @extschema@.ccp_stat_user_tables AS
     , vacuum_count
     , autovacuum_count
     , analyze_count
-    , autoanalyze_count 
-    FROM  @extschema@.ccp_stat_user_tables_func(); 
+    , autoanalyze_count
+    FROM  @extschema@.ccp_stat_user_tables_func();
 CREATE UNIQUE INDEX ccp_user_tables_db_schema_relname_idx ON @extschema@.ccp_stat_user_tables (dbname, schemaname, relname);

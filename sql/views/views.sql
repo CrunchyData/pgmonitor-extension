@@ -3,24 +3,24 @@
 CREATE VIEW @extschema@.ccp_is_in_recovery AS
     SELECT CASE WHEN pg_is_in_recovery = true THEN 1 ELSE 2 END AS status from pg_is_in_recovery();
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_is_in_recovery'
-    , false    
+    , false
     , 'global');
 
 
 CREATE VIEW @extschema@.ccp_postgresql_version AS
     SELECT current_setting('server_version_num')::int AS current;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_postgresql_version'
-    , false    
+    , false
     , 'global');
 
 
@@ -28,85 +28,85 @@ CREATE VIEW @extschema@.ccp_postmaster_runtime AS
     SELECT extract('epoch' from pg_postmaster_start_time) AS start_time_seconds
     FROM pg_catalog.pg_postmaster_start_time();
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_postmaster_runtime'
-    , false    
+    , false
     , 'global');
 
 -- Did not make as a matview since this is a critical metric to always be sure is current
 CREATE VIEW @extschema@.ccp_transaction_wraparound AS
     WITH max_age AS (
         SELECT 2000000000 as max_old_xid
-        , setting AS autovacuum_freeze_max_age 
-        FROM pg_catalog.pg_settings 
+        , setting AS autovacuum_freeze_max_age
+        FROM pg_catalog.pg_settings
         WHERE name = 'autovacuum_freeze_max_age')
-    , per_database_stats AS ( 
+    , per_database_stats AS (
         SELECT datname
         , m.max_old_xid::int
         , m.autovacuum_freeze_max_age::int
-        , age(d.datfrozenxid) AS oldest_current_xid 
-        FROM pg_catalog.pg_database d 
-        JOIN max_age m ON (true) 
+        , age(d.datfrozenxid) AS oldest_current_xid
+        FROM pg_catalog.pg_database d
+        JOIN max_age m ON (true)
         WHERE d.datallowconn)
     SELECT max(oldest_current_xid) AS oldest_current_xid
     , max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS percent_towards_wraparound
     , max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float))) AS percent_towards_emergency_autovac
     FROM per_database_stats;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_transaction_wraparound'
-    , false    
+    , false
     , 'global');
- 
+
 
 -- Did not make as a matview since this is a critical metric to always be sure is current
 CREATE VIEW @extschema@.ccp_archive_command_status AS
-    SELECT CASE 
+    SELECT CASE
         WHEN EXTRACT(epoch from (last_failed_time - last_archived_time)) IS NULL THEN 0
         WHEN EXTRACT(epoch from (last_failed_time - last_archived_time)) < 0 THEN 0
-        ELSE EXTRACT(epoch from (last_failed_time - last_archived_time)) 
+        ELSE EXTRACT(epoch from (last_failed_time - last_archived_time))
         END AS seconds_since_last_fail
     , EXTRACT(epoch from (CURRENT_TIMESTAMP - last_archived_time)) AS seconds_since_last_archive
     , archived_count
     , failed_count
     FROM pg_catalog.pg_stat_archiver;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_archive_command_status'
-    , false    
+    , false
     , 'global');
 
 
 CREATE VIEW @extschema@.ccp_postmaster_uptime AS
     SELECT extract(epoch from (clock_timestamp() - pg_postmaster_start_time() )) AS seconds;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_postmaster_uptime'
-    , false    
+    , false
     , 'global');
 
 
 CREATE VIEW @extschema@.ccp_settings_pending_restart AS
     SELECT count(*) AS count FROM pg_catalog.pg_settings WHERE pending_restart = true;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_settings_pending_restart'
-    , false    
+    , false
     , 'global');
 
 -- Must be able to get replica stats, so cannot be matview
@@ -123,12 +123,12 @@ CREATE VIEW @extschema@.ccp_replication_lag AS
        END
     AS received_time;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_replication_lag'
-    , false    
+    , false
     , 'global');
 
 
@@ -148,12 +148,12 @@ CREATE VIEW @extschema@.ccp_connection_stats AS
                         , COALESCE(SUM(CASE WHEN state = 'idle in transaction' THEN 1 ELSE 0 END),0) AS idle_in_txn FROM pg_catalog.pg_stat_activity) x
         JOIN (SELECT setting::float AS max_connections FROM pg_settings WHERE name = 'max_connections') xx ON (true);
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_connection_stats'
-    , false    
+    , false
     , 'global');
 
 
@@ -162,15 +162,15 @@ CREATE VIEW @extschema@.ccp_replication_lag_size AS
     SELECT client_addr AS replica
         , client_hostname AS replica_hostname
         , client_port AS replica_port
-        , pg_wal_lsn_diff(sent_lsn, replay_lsn) AS bytes 
+        , pg_wal_lsn_diff(sent_lsn, replay_lsn) AS bytes
         FROM pg_catalog.pg_stat_replication;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_replication_lag_size'
-    , false    
+    , false
     , 'global');
 
 
@@ -178,12 +178,12 @@ VALUES (
 CREATE VIEW @extschema@.ccp_replication_slots AS
     SELECT slot_name, active::int, pg_wal_lsn_diff(CASE WHEN pg_is_in_recovery() THEN pg_last_wal_replay_lsn() ELSE pg_current_wal_insert_lsn() END, restart_lsn) AS retained_bytes FROM pg_catalog.pg_replication_slots;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_replication_slots'
-    , false    
+    , false
     , 'global');
 
 
@@ -191,20 +191,20 @@ VALUES (
 CREATE VIEW @extschema@.ccp_data_checksum_failure AS
     SELECT datname AS dbname
     , checksum_failures AS count
-    , coalesce(extract(epoch from (clock_timestamp() - checksum_last_failure)), 0) AS time_since_last_failure_seconds 
+    , coalesce(extract(epoch from (clock_timestamp() - checksum_last_failure)), 0) AS time_since_last_failure_seconds
     FROM pg_catalog.pg_stat_database;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
    'ccp_data_checksum_failure'
-    , false    
+    , false
     , 'global');
 
 
 -- Locks can potentially be different on replicas
-CREATE VIEW @extschema@.ccp_locks AS 
+CREATE VIEW @extschema@.ccp_locks AS
     SELECT pg_database.datname as dbname
     , tmp.mode
     , COALESCE(count,0) as count
@@ -226,7 +226,7 @@ CREATE VIEW @extschema@.ccp_locks AS
     ) AS tmp2
     ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
@@ -241,7 +241,7 @@ CREATE VIEW @extschema@.ccp_wal_activity AS
       (SELECT COALESCE(sum(size),0) FROM pg_catalog.pg_ls_waldir()) AS total_size_bytes
       FROM (SELECT COALESCE(sum(size),0) AS last_5_min_size_bytes FROM pg_catalog.pg_ls_waldir() WHERE modification > CURRENT_TIMESTAMP - '5 minutes'::interval) x;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , scope )
 VALUES (
@@ -250,12 +250,12 @@ VALUES (
     , 'global');
 
 
--- Enabling this metric this view will reset the pg_stat_statements statistics based on 
+-- Enabling this metric this view will reset the pg_stat_statements statistics based on
 --   the run_interval set in metric_views
 CREATE VIEW @extschema@.ccp_pg_stat_statements_reset AS
     SELECT @extschema@.pg_stat_statements_reset_info() AS time;
 INSERT INTO @extschema@.metric_views (
-    view_name 
+    view_name
     , materialized_view
     , run_interval
     , scope
@@ -327,7 +327,7 @@ CREATE VIEW @extschema@.ccp_backrest_oldest_full_backup AS
     , stanza
     , backup_data->'database'->>'repo-key' AS repo
     , min((backup_data->'timestamp'->>'stop')::bigint) time_seconds
-    FROM per_stanza 
+    FROM per_stanza
     WHERE backup_data->>'type' IN ('full')
     GROUP BY config_file, stanza, backup_data->'database'->>'repo-key';
 
@@ -338,7 +338,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_full_backup AS
        , jsonb_array_elements(data) AS stanza_data
       FROM @extschema@.pgbackrest_info
     )
-    , per_stanza AS ( 
+    , per_stanza AS (
       SELECT config_file
        , stanza_data->>'name' AS stanza
        , jsonb_array_elements(stanza_data->'backup') AS backup_data
@@ -359,7 +359,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_diff_backup AS
        , jsonb_array_elements(data) AS stanza_data
     FROM @extschema@.pgbackrest_info
     )
-    , per_stanza AS ( 
+    , per_stanza AS (
       SELECT config_file
        , stanza_data->>'name' AS stanza
        , jsonb_array_elements(stanza_data->'backup') AS backup_data
@@ -380,7 +380,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_incr_backup AS
        , jsonb_array_elements(data) AS stanza_data
       FROM @extschema@.pgbackrest_info
     )
-    , per_stanza AS ( 
+    , per_stanza AS (
       SELECT config_file
        , stanza_data->>'name' AS stanza
        , jsonb_array_elements(stanza_data->'backup') AS backup_data

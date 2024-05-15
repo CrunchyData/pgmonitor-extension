@@ -91,4 +91,3 @@ PERFORM pg_catalog.pg_advisory_unlock(hashtext('pgmonitor refresh call'));
 
 END
 $$;
-

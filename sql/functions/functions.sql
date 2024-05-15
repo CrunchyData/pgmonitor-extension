@@ -1,29 +1,29 @@
 -- TODO Create function & view for monitoring that materialized views have run successfully within their scheduled time
 
 
-CREATE FUNCTION @extschema@.sequence_status() RETURNS TABLE (sequence_name text, last_value bigint, slots numeric, used numeric, percent int, cycle boolean, numleft numeric, table_usage text)  
+CREATE FUNCTION @extschema@.sequence_status() RETURNS TABLE (sequence_name text, last_value bigint, slots numeric, used numeric, percent int, cycle boolean, numleft numeric, table_usage text)
     LANGUAGE sql SECURITY DEFINER STABLE
     SET search_path TO pg_catalog, pg_temp
 AS $function$
 
-/* 
+/*
  * Provide detailed status information of sequences in the current database
  */
 
 WITH default_value_sequences AS (
     -- Get sequences defined as default values with related table
-    -- Note this subquery can be locked/hung by DDL that affects tables with sequences. 
+    -- Note this subquery can be locked/hung by DDL that affects tables with sequences.
     --  Use @extschema@.sequence_exhaustion() to actually monitor for sequences running out
-    SELECT s.seqrelid, c.oid 
+    SELECT s.seqrelid, c.oid
     FROM pg_catalog.pg_attribute a
     JOIN pg_catalog.pg_attrdef ad on (ad.adrelid,ad.adnum) = (a.attrelid,a.attnum)
     JOIN pg_catalog.pg_class c on a.attrelid = c.oid
     JOIN pg_catalog.pg_sequence s ON s.seqrelid = regexp_replace(pg_get_expr(ad.adbin,ad.adrelid), $re$^nextval\('(.+?)'::regclass\)$$re$, $re$\1$re$)::regclass
     WHERE (pg_get_expr(ad.adbin,ad.adrelid)) ~ '^nextval\('
 ), dep_sequences AS (
-    -- Get sequences set as dependencies with related tables (identities)    
+    -- Get sequences set as dependencies with related tables (identities)
     SELECT s.seqrelid, c.oid
-    FROM pg_catalog.pg_sequence s 
+    FROM pg_catalog.pg_sequence s
     JOIN pg_catalog.pg_depend d ON s.seqrelid = d.objid
     JOIN pg_catalog.pg_class c ON d.refobjid = c.oid
     UNION
@@ -52,7 +52,7 @@ FROM (
     FROM pg_catalog.pg_sequences s
     JOIN all_sequences a ON (format('%I.%I', s.schemaname, s.sequencename))::regclass = a.sequence_oid
     GROUP BY 1,2,3,4,5
-) x 
+) x
 ORDER BY ROUND(used/slots*100) DESC
 
 $function$;
@@ -63,7 +63,7 @@ CREATE FUNCTION @extschema@.sequence_exhaustion(p_percent integer DEFAULT 75, OU
     SET search_path TO pg_catalog, pg_temp
 AS $function$
 
-/* 
+/*
  * Returns count of sequences that have used up the % value given via the p_percent parameter (default 75%)
  */
 
@@ -72,19 +72,19 @@ FROM (
      SELECT CEIL((s.max_value-min_value::NUMERIC+1)/s.increment_by::NUMERIC) AS slots
         , CEIL((COALESCE(s.last_value,s.min_value)-s.min_value::NUMERIC+1)/s.increment_by::NUMERIC) AS used
     FROM pg_catalog.pg_sequences s
-) x 
+) x
 WHERE (ROUND(used/slots*100)::int) > p_percent;
 
 $function$;
 
 /*
  * Can't just do a raw check for the hash value since Prometheus only records numeric values for alerts
- * If either checksum function returns 0, then NO settings have changed 
+ * If either checksum function returns 0, then NO settings have changed
  * If either checksum function returns 1, then something has changed since last known valid state
  * For replicas, logging past settings is not possible to compare what may have changed
  * For replicas, by default, it is expected that its settings will match the primary
  * For replicas, if the pg_settings or pg_hba.conf are necessarily different from the primary, a known good hash of that replica's
-    settings can be sent as an argument to the relevant checksum function. Views are provided to easily obtain the hash values used by this monitoring tool. 
+    settings can be sent as an argument to the relevant checksum function. Views are provided to easily obtain the hash values used by this monitoring tool.
  * If any known hash parameters are passed to the checksum functions, note that it will override any past hash values stored in the log table when doing comparisons and completely re-evaluate the entire state. This is true even if done on a primary where the current state will then also be logged for comparison if it differs from the given hash.
  */
 
@@ -94,7 +94,7 @@ CREATE VIEW @extschema@.pg_settings_hash AS
     WITH settings_ordered_list AS (
         SELECT name
             , COALESCE(setting, '<<NULL>>') AS setting
-        FROM pg_catalog.pg_settings 
+        FROM pg_catalog.pg_settings
         ORDER BY name, setting)
     SELECT md5(string_agg(name||setting, ',')) AS md5_hash
         , string_agg(name||setting, ',') AS settings_string
@@ -118,9 +118,9 @@ CREATE VIEW @extschema@.pg_hba_hash AS
     FROM hba_ordered_list;
 
 
-CREATE FUNCTION @extschema@.pg_settings_checksum(p_known_settings_hash text DEFAULT NULL) 
+CREATE FUNCTION @extschema@.pg_settings_checksum(p_known_settings_hash text DEFAULT NULL)
     RETURNS smallint
-    LANGUAGE plpgsql SECURITY DEFINER 
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO pg_catalog, pg_temp
 AS $function$
 DECLARE
@@ -150,7 +150,7 @@ ORDER BY created_at DESC LIMIT 1;
 
 IF p_known_settings_hash IS NOT NULL THEN
     v_settings_hash_old := p_known_settings_hash;
-    -- Do not base validity on the stored value if manual hash is given. 
+    -- Do not base validity on the stored value if manual hash is given.
     v_valid := 0;
 END IF;
 
@@ -160,7 +160,7 @@ IF (v_settings_hash_old IS NOT NULL) THEN
 
         v_valid := 1;
 
-        IF v_is_in_recovery = false THEN 
+        IF v_is_in_recovery = false THEN
             INSERT INTO @extschema@.pg_settings_checksum (
                     settings_hash_generated
                     , settings_hash_known_provided
@@ -189,7 +189,7 @@ ELSE
                 , v_valid);
     END IF;
 
-END IF; 
+END IF;
 
 RETURN v_valid;
 
@@ -197,9 +197,9 @@ END
 $function$;
 
 
-CREATE FUNCTION @extschema@.pg_hba_checksum(p_known_hba_hash text DEFAULT NULL) 
+CREATE FUNCTION @extschema@.pg_hba_checksum(p_known_hba_hash text DEFAULT NULL)
     RETURNS smallint
-    LANGUAGE plpgsql SECURITY DEFINER 
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO pg_catalog, pg_temp
 AS $function$
 DECLARE
@@ -235,7 +235,7 @@ ORDER BY created_at DESC LIMIT 1;
 
 IF p_known_hba_hash IS NOT NULL THEN
     v_hba_hash_old := p_known_hba_hash;
-    -- Do not base validity on the stored value if manual hash is given. 
+    -- Do not base validity on the stored value if manual hash is given.
     v_valid := 0;
 END IF;
 
@@ -245,7 +245,7 @@ IF (v_hba_hash_old IS NOT NULL) THEN
 
         v_valid := 1;
 
-        IF v_is_in_recovery = false THEN 
+        IF v_is_in_recovery = false THEN
             INSERT INTO @extschema@.pg_hba_checksum (
                     hba_hash_generated
                     , hba_hash_known_provided
@@ -274,7 +274,7 @@ ELSE
                 , v_valid);
     END IF;
 
-END IF; 
+END IF;
 
 RETURN v_valid;
 
@@ -286,7 +286,7 @@ $function$;
  * This function provides quick, clear interface for resetting the checksum monitor to treat the currently detected configuration as valid after alerting on a change. Note that configuration history will be cleared.
  */
 CREATE FUNCTION @extschema@.pg_settings_checksum_set_valid() RETURNS smallint
-    LANGUAGE sql 
+    LANGUAGE sql
 AS $function$
 
 TRUNCATE @extschema@.pg_settings_checksum;
@@ -354,7 +354,7 @@ ELSE
       JOIN pg_catalog.pg_database d ON d.oid = s.dbid;
 END IF;
 
-END 
+END
 $function$;
 
 
@@ -362,7 +362,7 @@ $function$;
  * This function provides quick, clear interface for resetting the checksum monitor to treat the currently detected configuration as valid after alerting on a change. Note that configuration history will be cleared.
  */
 CREATE FUNCTION @extschema@.pg_hba_checksum_set_valid() RETURNS smallint
-    LANGUAGE sql 
+    LANGUAGE sql
 AS $function$
 
 TRUNCATE @extschema@.pg_hba_checksum;
@@ -387,7 +387,7 @@ DECLARE
   v_reset_interval       interval;
   v_sql                  text;
   v_stat_schema          name;
- 
+
 BEGIN
 -- ******** NOTE ********
 -- This function must be owned by a superuser to work
@@ -409,7 +409,7 @@ BEGIN
   SELECT COALESCE(max(reset_time), '1970-01-01'::timestamptz) INTO v_reset_timestamp FROM @extschema@.pg_stat_statements_reset_info;
 
   IF ((CURRENT_TIMESTAMP - v_reset_timestamp) > v_reset_interval) THEN
-      -- Ensure table is empty 
+      -- Ensure table is empty
       DELETE FROM @extschema@.pg_stat_statements_reset_info;
       v_sql := format('SELECT %I.pg_stat_statements_reset()', v_stat_schema);
       EXECUTE v_sql;
@@ -418,7 +418,7 @@ BEGIN
 
   RETURN (SELECT extract(epoch from reset_time) FROM @extschema@.pg_stat_statements_reset_info);
 
-END 
+END
 $function$;
 
 
@@ -434,13 +434,13 @@ DECLARE
 
 v_gather_timestamp      timestamptz;
 v_system_identifier     bigint;
- 
+
 BEGIN
 -- Get pgBackRest info in JSON format
 
 IF pg_catalog.pg_is_in_recovery() = 'f' THEN
 
-    -- Ensure table is empty 
+    -- Ensure table is empty
     DELETE FROM @extschema@.pgbackrest_info;
 
     SELECT system_identifier into v_system_identifier FROM pg_control_system();
@@ -456,7 +456,7 @@ IF NOT FOUND THEN
     RAISE EXCEPTION 'No backups being returned from pgbackrest info command';
 END IF;
 
-END 
+END
 $function$;
 
 
@@ -476,8 +476,8 @@ v_start_runtime                 timestamptz;
 v_stop_runtime                  timestamptz;
 
 BEGIN
-/* 
- * Function version of refresh_metrics() procedure for PG versions less than 14 that cannot be called via BGW 
+/*
+ * Function version of refresh_metrics() procedure for PG versions less than 14 that cannot be called via BGW
  */
 
 IF pg_catalog.pg_is_in_recovery() = TRUE THEN
@@ -602,7 +602,7 @@ IF current_setting('server_version_num')::int >= 160000 THEN
         , p.vacuum_count
         , p.autovacuum_count
         , p.analyze_count
-        , p.autoanalyze_count 
+        , p.autoanalyze_count
       FROM pg_catalog.pg_stat_user_tables p;
 ELSE
     RETURN QUERY SELECT
@@ -622,11 +622,9 @@ ELSE
         , p.vacuum_count
         , p.autovacuum_count
         , p.analyze_count
-        , p.autoanalyze_count 
+        , p.autoanalyze_count
       FROM pg_catalog.pg_stat_user_tables p;
 END IF;
 
 END
 $function$;
-
-

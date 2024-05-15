@@ -4,11 +4,11 @@
 
 This extension provides a means to collect metrics within a PostgreSQL database to be used by an external collection source (Prometheus exporter, Icinga/Nagios scraper, etc). Certain metrics are collected, their results stored as materialized views or tables, and refreshed on a per-query configurable timer. This allows the metric scraper to not have to be concerned about the underlying runtime of queries that can be more expensive, especially as the size of the database grows (object size, table statistics, etc). It also allows a functional interface for some metrics to account for differences in underlying system catalogs between PostgreSQL major versions (Ex. new columns in pg_stat_activity, pg_stat_statements).
 
-A background worker is provided to refresh the materialized views and tables automatically without the need for any third-party schedulers. 
+A background worker is provided to refresh the materialized views and tables automatically without the need for any third-party schedulers.
 
 ## INSTALLATION
 
-Requirement: 
+Requirement:
 
  * PostgreSQL >= 12
 
@@ -32,7 +32,7 @@ The background worker must be loaded on database start by adding the library to 
 
     shared_preload_libraries = 'pgmonitor_bgw'     # (change requires restart)
 
-You can also set other control variables for the BGW in postgresql.conf. These can be added/changed at anytime with a simple reload. See the documentation for more details. 
+You can also set other control variables for the BGW in postgresql.conf. These can be added/changed at anytime with a simple reload. See the documentation for more details.
 
 `pgmonitor_bgw.dbname` is required at a minimum for maintenance to run on the given database(s). This can be a comma separated list if pgMonitor is installed on more than one database to collect per-database metrics.
 
@@ -56,15 +56,15 @@ Log into PostgreSQL and run the following commands. Schema is optional (but reco
 The names of all views and materialized views are stored in the `metric_views` configuration table. The extension itself does not touch normal views as part of any maintenance; they are stored together with the materialized views so that external scrape tools can more easily find all view based metrics in one table.
 ```
                               Table "pgmonitor_ext.metric_views"
-       Column       |           Type           | Collation | Nullable |        Default        
+       Column       |           Type           | Collation | Nullable |        Default  
 --------------------+--------------------------+-----------+----------+-----------------------
  view_schema        | text                     |           | not null | 'pgmonitor_ext'::text
- view_name          | text                     |           | not null | 
+ view_name          | text                     |           | not null |
  materialized_view  | boolean                  |           | not null | true
  concurrent_refresh | boolean                  |           | not null | true
  run_interval       | interval                 |           | not null | '00:10:00'::interval
- last_run           | timestamp with time zone |           |          | 
- last_run_time      | interval                 |           |          | 
+ last_run           | timestamp with time zone |           |          |
+ last_run_time      | interval                 |           |          |
  active             | boolean                  |           | not null | true
  scope              | text                     |           | not null | 'global'::text
 ```
@@ -84,7 +84,7 @@ The names of all views and materialized views are stored in the `metric_views` c
  - `last_run_time`
     - How long the last run of this refresh took
  - `active`
-    - If view_name is a materalized view, determines whether it should be refreshed as part of automatic maintainance
+    - If view_name is a materalized view, determines whether it should be refreshed as part of automatic maintenance
     - Both matviews and normal views can also set this to be false as a means of allowing external scrape tools to ignore them
  - `scope`
     - Valid values are "global" or "database"
@@ -95,14 +95,14 @@ The names of all views and materialized views are stored in the `metric_views` c
 For metrics that still require storage of results for fast scraping but cannot use a materialized view, it is also possible to use a table and give pgMonitor an SQL statement to run to refresh that table. For example, the included pgBackRest metrics need to use a function that uses a COPY statement.
 ```
                              Table "pgmonitor_ext.metric_tables"
-      Column       |           Type           | Collation | Nullable |        Default        
+      Column       |           Type           | Collation | Nullable |        Default  
 -------------------+--------------------------+-----------+----------+-----------------------
  table_schema      | text                     |           | not null | 'pgmonitor_ext'::text
- table_name        | text                     |           | not null | 
- refresh_statement | text                     |           | not null | 
+ table_name        | text                     |           | not null |
+ refresh_statement | text                     |           | not null |
  run_interval      | interval                 |           | not null | '00:10:00'::interval
- last_run          | timestamp with time zone |           |          | 
- last_run_time     | interval                 |           |          | 
+ last_run          | timestamp with time zone |           |          |
+ last_run_time     | interval                 |           |          |
  active            | boolean                  |           | not null | true
  scope             | text                     |           | not null | 'global'::text
 ```
@@ -129,7 +129,7 @@ ccp_connection_stats
 ccp_replication_lag_size
 ccp_replication_slots
 ccp_data_checksum_failure
-ccp_locks 
+ccp_locks
 ccp_wal_activity
 ccp_pg_stat_statements_reset
 ccp_backrest_last_info
@@ -155,15 +155,15 @@ TABLES:
 ```
 pg_settings_checksum
 pg_hba_checksum
-pg_stat_statements_reset_info 
+pg_stat_statements_reset_info
 pgbackrest_info
 
 FUNCTIONS:
 ```
 sequence_status() RETURNS TABLE (sequence_name text, last_value bigint, slots numeric, used numeric, percent int, cycle boolean, numleft numeric, table_usage text)  
 sequence_exhaustion(p_percent integer DEFAULT 75, OUT count bigint)
-pg_settings_checksum(p_known_settings_hash text DEFAULT NULL) 
-pg_hba_checksum(p_known_hba_hash text DEFAULT NULL) 
+pg_settings_checksum(p_known_settings_hash text DEFAULT NULL)
+pg_hba_checksum(p_known_hba_hash text DEFAULT NULL)
 pg_settings_checksum_set_valid() RETURNS smallint
 pg_hba_checksum_set_valid() RETURNS smallint
 pg_stat_statements_reset_info(p_throttle_minutes integer DEFAULT 1440)

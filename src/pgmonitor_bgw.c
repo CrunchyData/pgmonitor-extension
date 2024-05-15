@@ -194,13 +194,13 @@ void pgmonitor_bgw_main(Datum main_arg) {
             return;
         }
 
-        // Use method of shared_preload_libraries to split the pgmonitor_bgw_dbname string found in src/backend/utils/init/miscinit.c 
-        // Need a modifiable copy of string 
+        // Use method of shared_preload_libraries to split the pgmonitor_bgw_dbname string found in src/backend/utils/init/miscinit.c
+        // Need a modifiable copy of string
         if (pgmonitor_bgw_dbname != NULL) {
             rawstring = pstrdup(pgmonitor_bgw_dbname);
-            // Parse string into list of identifiers 
+            // Parse string into list of identifiers
             if (!(*split_function_ptr)(rawstring, ',', &elemlist)) {
-                // syntax error in list 
+                // syntax error in list
                 pfree(rawstring);
                 list_free(elemlist);
                 ereport(LOG,
@@ -208,12 +208,12 @@ void pgmonitor_bgw_main(Datum main_arg) {
                          errmsg("invalid list syntax in parameter \"pgmonitor_bgw.dbname\" in postgresql.conf")));
                 return;
             }
-            
+
             dbcounter = 0;
             foreach(l, elemlist) {
 
                 char *dbname = (char *) lfirst(l);
-                
+
                 elog(DEBUG1, "pgmonitor_bgw: Dynamic bgw launch begun for %s (%d)", dbname, dbcounter);
                 worker.bgw_flags = BGWORKER_SHMEM_ACCESS |
                     BGWORKER_BACKEND_DATABASE_CONNECTION;
@@ -259,7 +259,7 @@ void pgmonitor_bgw_main(Datum main_arg) {
                 }
                 Assert(status == BGWH_STARTED);
 
-                // Shutdown wait function introduced in 9.5. The latch problems this wait fixes are only encountered in 
+                // Shutdown wait function introduced in 9.5. The latch problems this wait fixes are only encountered in
                 // 9.6 and later.
                 elog(DEBUG1, "pgmonitor_bgw: Waiting for BGW shutdown...");
                 status = WaitForBackgroundWorkerShutdown(handle);
@@ -293,7 +293,7 @@ void pgmonitor_bgw_main(Datum main_arg) {
 
 /*
  * Unable to pass the database name as a string argument (not sure why yet)
- * Instead, the GUC is parsed both in the main function and below and a counter integer 
+ * Instead, the GUC is parsed both in the main function and below and a counter integer
  *  is passed to determine which database the BGW will run in.
  */
 void pgmonitor_bgw_run_maint(Datum arg) {
@@ -305,7 +305,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
     List                *elemlist;
     int                 ret;
     StringInfoData      buf;
-    #if (PG_VERSION_NUM >= 140000)    
+    #if (PG_VERSION_NUM >= 140000)
     SPIExecuteOptions   spi_exec_opts;
     Portal              portal = ActivePortal;
     bool                portal_created = false;
@@ -321,9 +321,9 @@ void pgmonitor_bgw_run_maint(Datum arg) {
     elog(DEBUG1, "pgmonitor_bgw: Before parsing dbname GUC in dynamic main func: %s", pgmonitor_bgw_dbname);
     rawstring = pstrdup(pgmonitor_bgw_dbname);
     elog(DEBUG1, "pgmonitor_bgw: GUC rawstring copy: %s", rawstring);
-    // Parse string into list of identifiers 
+    // Parse string into list of identifiers
     if (!(*split_function_ptr)(rawstring, ',', &elemlist)) {
-        // syntax error in list 
+        // syntax error in list
         pfree(rawstring);
         list_free(elemlist);
         ereport(LOG,
@@ -334,7 +334,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
 
     dbname = list_nth(elemlist, db_main_counter);
     elog(DEBUG1, "pgmonitor_bgw: Parsing dbname list: %s (%d)", dbname, db_main_counter);
-    
+
     if (strcmp(dbname, "template1") == 0) {
         elog(DEBUG1, "pgmonitor_bgw: Default database name found in dbname local variable (\"template1\").");
     }
@@ -342,14 +342,14 @@ void pgmonitor_bgw_run_maint(Datum arg) {
     elog(DEBUG1, "pgmonitor_bgw: Before bgw initialize connection for db %s", dbname);
 
     BackgroundWorkerInitializeConnection(dbname, pgmonitor_bgw_role, 0);
-    
+
     elog(DEBUG1, "pgmonitor_bgw: After bgw initialize connection for db %s", dbname);
 
     initStringInfo(&buf);
 
     SetCurrentStatementStartTimestamp();
 
-    #if (PG_VERSION_NUM >= 140000)    
+    #if (PG_VERSION_NUM >= 140000)
     SPI_connect_ext(SPI_OPT_NONATOMIC);
     if (!PortalIsValid(portal)) {
         portal_created = true;
@@ -358,7 +358,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
         portal->resowner = CurrentResourceOwner;
         ActivePortal = portal;
         PortalContext = portal->portalContext;
-        
+
         StartTransactionCommand();
         EnsurePortalSnapshotExists();
     }
@@ -392,7 +392,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
         return;
     }
 
-    // If so then actually log that it's started for that database. 
+    // If so then actually log that it's started for that database.
     elog(LOG, "%s dynamic background worker initialized with role %s on database %s"
             , MyBgworkerEntry->bgw_name
             , pgmonitor_bgw_role
@@ -427,7 +427,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
 
     resetStringInfo(&buf);
 
-    #if (PG_VERSION_NUM >= 140000)    
+    #if (PG_VERSION_NUM >= 140000)
     appendStringInfo(&buf, "CALL \"%s\".refresh_metrics()", pgmonitor_schema);
     #else
     appendStringInfo(&buf, "SELECT \"%s\".refresh_metrics_legacy()", pgmonitor_schema);
@@ -435,7 +435,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
 
     pgstat_report_activity(STATE_RUNNING, buf.data);
 
-    #if (PG_VERSION_NUM >= 140000)    
+    #if (PG_VERSION_NUM >= 140000)
     // Call refresh_metrics procedure non-atomically
     memset(&spi_exec_opts, 0, sizeof(spi_exec_opts));
     spi_exec_opts.allow_nonatomic = true;
@@ -461,7 +461,7 @@ void pgmonitor_bgw_run_maint(Datum arg) {
         PortalContext = NULL;
     }
     #else
-    // Call refresh_metrics_legacy function 
+    // Call refresh_metrics_legacy function
     ret = SPI_execute(buf.data, false, 0);
 
     if (ret != SPI_OK_SELECT)
@@ -476,17 +476,16 @@ void pgmonitor_bgw_run_maint(Datum arg) {
     SPI_finish();
     PopActiveSnapshot();
     CommitTransactionCommand();
-    #endif 
+    #endif
 
     #if (PG_VERSION_NUM < 150000)
     ProcessCompletedNotifies();
     #endif
     pgstat_report_activity(STATE_IDLE, NULL);
     elog(DEBUG1, "pgmonitor_bgw: pgmonitor dynamic BGW shutting down gracefully for database %s.", dbname);
-    
+
     pfree(rawstring);
     list_free(elemlist);
 
     return;
 }
-
