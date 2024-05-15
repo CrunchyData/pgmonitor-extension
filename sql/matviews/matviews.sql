@@ -1,4 +1,5 @@
 -- TODO Create sub-extension to add support for nodemx queries (require pgmonitor extension)
+
 CREATE MATERIALIZED VIEW @extschema@.ccp_stat_user_tables AS 
     SELECT current_database() as dbname
     , schemaname
@@ -11,13 +12,14 @@ CREATE MATERIALIZED VIEW @extschema@.ccp_stat_user_tables AS
     , n_tup_upd
     , n_tup_del
     , n_tup_hot_upd
+    , n_tup_newpage_upd
     , n_live_tup
     , n_dead_tup
     , vacuum_count
     , autovacuum_count
     , analyze_count
     , autoanalyze_count 
-    FROM pg_catalog.pg_stat_user_tables;
+    FROM  @extschema@.ccp_stat_user_tables_func(); 
 CREATE UNIQUE INDEX ccp_user_tables_db_schema_relname_idx ON @extschema@.ccp_stat_user_tables (dbname, schemaname, relname);
 INSERT INTO @extschema@.metric_views (
     view_name 
