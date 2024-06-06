@@ -343,13 +343,13 @@ ELSE
         , s.queryid
         , btrim(replace(left(s.query, 40), '\n', '')) AS query
         , s.calls
-        , s.total_exec_time
-        , s.max_exec_time
-        , s.mean_exec_time
+        , s.total_time AS total_exec_time
+        , s.max_time AS max_exec_time
+        , s.mean_time AS mean_exec_time
         , s.rows
-        , 0 AS wal_records
-        , 0 AS wal_fpi
-        , 0 AS wal_bytes
+        , 0::bigint AS wal_records
+        , 0::bigint AS wal_fpi
+        , 0::numeric AS wal_bytes
       FROM public.pg_stat_statements s
       JOIN pg_catalog.pg_database d ON d.oid = s.dbid;
 END IF;
@@ -616,7 +616,7 @@ ELSE
         , p.n_tup_upd
         , p.n_tup_del
         , p.n_tup_hot_upd
-        , 0 AS n_tup_newpage_upd
+        , 0::bigint AS n_tup_newpage_upd
         , p.n_live_tup
         , p.n_dead_tup
         , p.vacuum_count
