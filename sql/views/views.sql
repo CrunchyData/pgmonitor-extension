@@ -1,13 +1,13 @@
 
 /**** metric views ****/
-CREATE VIEW @extschema@.ccp_is_in_recovery AS
+CREATE VIEW @extschema@.ccp_pg_is_in_recovery AS
     SELECT CASE WHEN pg_is_in_recovery = true THEN 1 ELSE 2 END AS status from pg_is_in_recovery();
 INSERT INTO @extschema@.metric_views (
     view_name
     , materialized_view
     , scope )
 VALUES (
-   'ccp_is_in_recovery'
+   'ccp_pg_is_in_recovery'
     , false
     , 'global');
 
