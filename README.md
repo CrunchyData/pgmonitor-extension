@@ -157,7 +157,7 @@ pg_settings_checksum
 pg_hba_checksum
 pg_stat_statements_reset_info
 pgbackrest_info
-
+```
 FUNCTIONS:
 ```
 sequence_status() RETURNS TABLE (sequence_name text, last_value bigint, slots numeric, used numeric, percent int, cycle boolean, numleft numeric, table_usage text)  
