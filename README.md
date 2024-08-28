@@ -117,56 +117,58 @@ For metrics that still require storage of results for fast scraping but cannot u
 
 NORMAL VIEWS:
 ```
-ccp_is_in_recovery
-ccp_postgresql_version
-ccp_postmaster_runtime
-ccp_transaction_wraparound
 ccp_archive_command_status
-ccp_postmaster_uptime
-ccp_settings_pending_restart
-ccp_replication_lag
-ccp_connection_stats
-ccp_replication_lag_size
-ccp_replication_slots
-ccp_data_checksum_failure
-ccp_locks
-ccp_wal_activity
-ccp_pg_stat_statements_reset
+ccp_backrest_last_diff_backup
+ccp_backrest_last_full_backup
+ccp_backrest_last_incr_backup
 ccp_backrest_last_info
 ccp_backrest_oldest_full_backup
-ccp_backrest_last_full_backup
-ccp_backrest_last_diff_backup
-ccp_backrest_last_incr_backup
+ccp_connection_stats
+ccp_data_checksum_failure
+ccp_is_in_recovery
+ccp_locks
+ccp_postgresql_version
+ccp_postmaster_runtime
+ccp_postmaster_uptime
+ccp_replication_lag
+ccp_replication_lag_size
+ccp_replication_slots
+ccp_settings_pending_restart
+ccp_stat_bgwriter
+ccp_stat_checkpointer
+ccp_stat_io_bgwriter
+ccp_pg_stat_statements_reset
+ccp_transaction_wraparound
+ccp_wal_activity
 ```
 
 MAT VIEWS:
 ```
+ccp_database_size
+ccp_pg_hba_checksum
+ccp_pg_settings_checksum
+ccp_sequence_exhaustion
+ccp_stat_database
 ccp_stat_user_tables
 ccp_table_size
-ccp_database_size
-ccp_stat_bgwriter
-ccp_stat_database
-ccp_sequence_exhaustion
-ccp_pg_settings_checksum
-ccp_pg_hba_checksum
 ```
 
 TABLES:
 ```
-pg_settings_checksum
 pg_hba_checksum
+pg_settings_checksum
 pg_stat_statements_reset_info
 pgbackrest_info
 ```
 FUNCTIONS:
 ```
-sequence_status() RETURNS TABLE (sequence_name text, last_value bigint, slots numeric, used numeric, percent int, cycle boolean, numleft numeric, table_usage text)  
-sequence_exhaustion(p_percent integer DEFAULT 75, OUT count bigint)
-pg_settings_checksum(p_known_settings_hash text DEFAULT NULL)
 pg_hba_checksum(p_known_hba_hash text DEFAULT NULL)
-pg_settings_checksum_set_valid() RETURNS smallint
 pg_hba_checksum_set_valid() RETURNS smallint
+pg_settings_checksum(p_known_settings_hash text DEFAULT NULL)
+pg_settings_checksum_set_valid() RETURNS smallint
 pg_stat_statements_reset_info(p_throttle_minutes integer DEFAULT 1440)
+sequence_exhaustion(p_percent integer DEFAULT 75, OUT count bigint)
+sequence_status() RETURNS TABLE (sequence_name text, last_value bigint, slots numeric, used numeric, percent int, cycle boolean, numleft numeric, table_usage text)  
 ```
 PROCEDURE:
 ```
