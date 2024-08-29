@@ -702,7 +702,6 @@ END IF;
 END
 $function$;
 
-
 CREATE FUNCTION @extschema@.ccp_stat_io_bgwriter() RETURNS TABLE
 (
     writes bigint
@@ -725,7 +724,7 @@ IF current_setting('server_version_num')::int >= 170000 THEN
 ELSE
     RETURN QUERY
     SELECT
-        , s.buffers_backend AS writes
+        s.buffers_backend AS writes
         , s.buffers_backend_fsync AS fsyncs
     FROM pg_catalog.pg_stat_bgwriter s;
 
