@@ -6,6 +6,8 @@ This extension provides a means to collect metrics within a PostgreSQL database 
 
 A background worker is provided to refresh the materialized views and tables automatically without the need for any third-party schedulers.
 
+To see a practical application of this extension using Prometheus/Grafana we welcome you to try out pgMonitor - https://github.com/CrunchyData/pgmonitor
+
 ## INSTALLATION
 
 Requirement:
