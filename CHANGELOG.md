@@ -7,7 +7,7 @@ FEATURES
 
 BREAKING CHANGES
 ----------------
- - PG17 restructured the pg_stat_bgwriter catalog information. Extension has restructured background writer/checkpointer stats around those changes.
+ - PG17 restructured the pg_stat_bgwriter catalog information. This extension has been restructured around those changes:
     - Changed the `ccp_stat_bgwriter` metric from a materialized view to a standard view
     - Removed columns from `ccp_stat_bgwriter` that are no longer part of `pg_catalog.pg_stat_bgwriter`
     - New metrics views created: `ccp_stat_checkpointer` and `ccp_stat_io_bgwriter`. These align with where the columns from `pg_stat_bgwriter` were moved to.
