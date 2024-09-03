@@ -400,7 +400,7 @@ CREATE VIEW @extschema@.ccp_stat_bgwriter AS
         buffers_clean
         , maxwritten_clean
         , buffers_alloc
-    FROM @extschema@.ccp_stat_bgwriter();
+    FROM pg_catalog.pg_stat_bgwriter;
 INSERT INTO @extschema@.metric_views (
     view_name
     , materialized_view

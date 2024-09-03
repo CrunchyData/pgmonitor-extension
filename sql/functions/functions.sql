@@ -629,39 +629,6 @@ END IF;
 END
 $function$;
 
-CREATE FUNCTION @extschema@.ccp_stat_bgwriter() RETURNS TABLE
-(
-    buffers_clean bigint
-    , maxwritten_clean bigint
-    , buffers_alloc bigint
-)
-    LANGUAGE plpgsql
-AS $function$
-DECLARE
-BEGIN
-
-IF current_setting('server_version_num')::int >= 170000 THEN
-
-    RETURN QUERY
-    SELECT
-        b.buffers_clean
-        , b.maxwritten_clean
-        , b.buffers_alloc
-    FROM pg_catalog.pg_stat_bgwriter b;
-
-ELSE
-
-    RETURN QUERY
-    SELECT
-        b.buffers_clean
-        , b.maxwritten_clean
-        , b.buffers_alloc
-    FROM pg_catalog.pg_stat_bgwriter b;
-
-END IF;
-
-END
-$function$;
 
 CREATE FUNCTION @extschema@.ccp_stat_checkpointer() RETURNS TABLE
 (
