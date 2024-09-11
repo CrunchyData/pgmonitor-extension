@@ -1,6 +1,6 @@
 
 DROP MATERIALIZED VIEW @extschema@.ccp_stat_bgwriter;
-DELETE FROM @extschema@.metric_views WHERE view_name = 'ccp_stat_bgwriter');
+DELETE FROM @extschema@.metric_views WHERE view_name = 'ccp_stat_bgwriter';
 
 CREATE FUNCTION @extschema@.ccp_stat_checkpointer() RETURNS TABLE
 (
