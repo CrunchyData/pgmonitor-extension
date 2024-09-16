@@ -393,3 +393,51 @@ CREATE VIEW @extschema@.ccp_backrest_last_incr_backup AS
     FROM per_stanza
     WHERE backup_data->>'type' IN ('full', 'diff', 'incr')
     GROUP BY config_file, stanza, backup_data->'database'->>'repo-key';
+
+
+CREATE VIEW @extschema@.ccp_stat_bgwriter AS
+    SELECT
+        buffers_clean
+        , maxwritten_clean
+        , buffers_alloc
+    FROM pg_catalog.pg_stat_bgwriter;
+INSERT INTO @extschema@.metric_views (
+    view_name
+    , materialized_view
+    , scope )
+VALUES (
+   'ccp_stat_bgwriter'
+    , false
+    , 'global');
+
+
+CREATE VIEW @extschema@.ccp_stat_checkpointer AS
+    SELECT
+        num_timed
+        , num_requested
+        , write_time
+        , sync_time
+        , buffers_written
+    FROM @extschema@.ccp_stat_checkpointer();
+INSERT INTO @extschema@.metric_views (
+    view_name
+    , materialized_view
+    , scope )
+VALUES (
+   'ccp_stat_checkpointer'
+    , false
+    , 'global');
+
+CREATE VIEW @extschema@.ccp_stat_io_bgwriter AS
+    SELECT
+        writes
+        , fsyncs
+    FROM @extschema@.ccp_stat_io_bgwriter();
+INSERT INTO @extschema@.metric_views (
+    view_name
+    , materialized_view
+    , scope )
+VALUES (
+   'ccp_stat_io_bgwriter'
+    , false
+    , 'global');

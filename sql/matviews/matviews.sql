@@ -67,33 +67,6 @@ VALUES (
     , 'global');
 
 
-
-CREATE MATERIALIZED VIEW @extschema@.ccp_stat_bgwriter AS
-    SELECT checkpoints_timed
-    , checkpoints_req
-    , checkpoint_write_time
-    , checkpoint_sync_time
-    , buffers_checkpoint
-    , buffers_clean
-    , maxwritten_clean
-    , buffers_backend
-    , buffers_backend_fsync
-    , buffers_alloc
-    FROM pg_catalog.pg_stat_bgwriter;
-/* According to docs, this table should only ever have 1 row */
-CREATE UNIQUE INDEX ccp_stat_bgwriter_idx ON @extschema@.ccp_stat_bgwriter (checkpoints_timed);
-INSERT INTO @extschema@.metric_views (
-    view_name
-    , run_interval
-    , scope
-    , concurrent_refresh )
-VALUES (
-   'ccp_stat_bgwriter'
-    , '5 minutes'::interval
-    , 'global'
-    , false );
-
-
 CREATE MATERIALIZED VIEW @extschema@.ccp_stat_database AS
     SELECT s.datname AS dbname
     , s.xact_commit
