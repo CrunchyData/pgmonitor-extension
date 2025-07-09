@@ -174,7 +174,6 @@ MAT VIEWS:
 ```
  ccp_database_size_matview
  ccp_pg_hba_checksum
- ccp_pg_settings_checksum
  ccp_sequence_exhaustion
  ccp_stat_user_tables_matview
  ccp_table_size_matview
@@ -187,7 +186,6 @@ TABLES:
  metric_views
  pgbackrest_info
  pg_hba_checksum
- pg_settings_checksum
  pg_stat_statements_reset_info
 ```
 FUNCTIONS:
@@ -200,11 +198,8 @@ FUNCTIONS:
  ccp_stat_user_tables_view_choice() RETURNS TABLE
  ccp_table_size_view_choice() RETURNS TABLE
  pgbackrest_info() RETURNS SETOF pgbackrest_info
- pg_settings_checksum_set_valid() RETURNS smallint
  pg_hba_checksum_set_valid() RETURNS smallint
  pg_hba_checksum(p_known_hba_hash text DEFAULT NULL)
- pg_settings_checksum_set_valid() RETURNS smallint
- pg_settings_checksum(p_known_settings_hash text DEFAULT NULL)
  pg_stat_statements_func() RETURNS TABLE
  pg_stat_statements_reset_info() RETURNS bigint
  refresh_metrics_legacy (p_object_schema text DEFAULT 'monitor', p_object_name text DEFAULT NULL) RETURNS void

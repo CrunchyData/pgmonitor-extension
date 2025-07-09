@@ -55,7 +55,7 @@ FOR v_row IN EXECUTE v_loop_sql LOOP
     v_stop_runtime := clock_timestamp();
     v_runtime = v_stop_runtime - v_start_runtime;
 
-    UPDATE @extschema@.metric_views
+    UPDATE @extschema@.metric_matviews
     SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
     WHERE view_schema = v_row.view_schema
     AND view_name = v_row.view_name;

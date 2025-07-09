@@ -56,7 +56,7 @@ ALTER TABLE @extschema@.metric_tables SET (
     , autovacuum_analyze_threshold = 10);
 
 /*
- * Tables and functions for monitoring changes to pg_settings and pg_hba_file_rules system catalogs.
+ * Tables and functions for monitoring changes to the pg_hba_file_rules system catalog.
  * Tables allow recording of existing settings so they can be referred back to to see what changed
  */
 CREATE TABLE @extschema@.pg_hba_checksum (
