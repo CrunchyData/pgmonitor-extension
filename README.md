@@ -50,17 +50,48 @@ The interval defaults to 30 seconds and generally doesn't need to be changed. If
 
 Log into PostgreSQL and run the following commands. Schema is optional (but recommended) and can be whatever you wish, but it cannot be changed after installation. If you're using the BGW, the database cluster can be safely started without having the extension first created in the configured database(s). You can create the extension at any time and the BGW will automatically pick up that it exists without restarting the cluster (as long as shared_preload_libraries was set) and begin running maintenance as configured.
 
-    CREATE SCHEMA pgmonitor_ext;
-    CREATE EXTENSION pgmonitor SCHEMA pgmonitor_ext;
+
+Permissions will have to be granted to the monitoring role to allow it to connect to all user databases that need monitoring and to read and write to all of the extension's objects. Note that by default, all roles have the CONNECT privilege granted.
+
+```sql
+CREATE SCHEMA pgm;
+CREATE EXTENSION pgmonitor SCHEMA pgm;
+
+CREATE ROLE pgm_monitoring WITH LOGIN;
+ALTER ROLE pgm_monitoring SET lock_timeout TO '2min'; -- Monitoring queries should not hold excessive locks
+ALTER ROLE pgm_monitoring SET jit TO 'off'; -- Some monitoring queries encounter resource issues when JIT is enabled
+```
+
+```sql
+SELECT 'GRANT CONNECT ON DATABASE "' || datname || '" TO pgm_monitoring;'
+FROM pg_database
+WHERE datallowconn = true;
+```
+This should generate one or more statements similar to the following:
+
+```sql
+GRANT CONNECT ON DATABASE "postgres" TO pgm_monitoring;
+GRANT CONNECT ON DATABASE "alphadb" TO pgm_monitoring;
+```
+The following grants allow the necessary access to the pgMonitor extension objects.
+
+```sql
+GRANT pg_monitor to pgm_monitoring;
+GRANT pg_execute_server_program TO pgm_monitoring;  -- This only necessary for pgbackrest monitoring
+
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pgm TO pgm_monitoring;
+GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA pgm TO pgm_monitoring;
+GRANT ALL ON ALL TABLES IN SCHEMA pgm TO pgm_monitoring;
+```
 
 ### Metric configuration
 
 The names of all normal views are stored in `metric_views`. All metrics that are either normal views or have the option to be backed by either a normal view or materialized view are stored here. If a metric is only backed by a materialized view and has no option for a normal view, it will only be stored in `metrics_matviews`.
 ```
-                   Table "pgmonitor_ext.metric_views"
+                   Table "pgm.metric_views"
      Column     |  Type   | Collation | Nullable |        Default        
 ----------------+---------+-----------+----------+-----------------------
- view_schema    | text    |           | not null | 'pgmonitor_ext'::text
+ view_schema    | text    |           | not null | 'pgm'::text
  view_name      | text    |           | not null | 
  matview_source | boolean |           | not null | false
  active         | boolean |           | not null | true
@@ -84,10 +115,10 @@ Indexes:
 
 Materialized views are stored in the `metric_matviews` configuration table. The background worker uses this table to determine which materialized views are "active" to be refreshed and how often to refresh them.
 ```
-                            Table "pgmonitor_ext.metric_matviews"
+                            Table "pgm.metric_matviews"
        Column       |           Type           | Collation | Nullable |        Default        
 --------------------+--------------------------+-----------+----------+-----------------------
- view_schema        | text                     |           | not null | 'pgmonitor_ext'::text
+ view_schema        | text                     |           | not null | 'pgm'::text
  view_name          | text                     |           | not null | 
  concurrent_refresh | boolean                  |           | not null | true
  run_interval       | interval                 |           | not null | '00:14:00'::interval
@@ -116,10 +147,10 @@ Materialized views are stored in the `metric_matviews` configuration table. The 
 
 For metrics that still require storage of results for fast scraping but cannot use a normal or materialized view, it is also possible to use a table and give pgMonitor an SQL statement to run to refresh that table. For example, the included pgBackRest metrics need to use a function that uses a COPY statement.
 ```
-                             Table "pgmonitor_ext.metric_tables"
+                             Table "pgm.metric_tables"
       Column       |           Type           | Collation | Nullable |        Default  
 -------------------+--------------------------+-----------+----------+-----------------------
- table_schema      | text                     |           | not null | 'pgmonitor_ext'::text
+ table_schema      | text                     |           | not null | 'pgm'::text
  table_name        | text                     |           | not null |
  refresh_statement | text                     |           | not null |
  run_interval      | interval                 |           | not null | '00:10:00'::interval
@@ -134,7 +165,7 @@ For metrics that still require storage of results for fast scraping but cannot u
  - `table_name`
     - Name of the table in system catalogs
  - `refresh_statement`
-    - The full SQL statement that is run to refresh the data in `table_name`. Ex: `SELECT pgmonitor_ext.pgbackrest_info()`
+    - The full SQL statement that is run to refresh the data in `table_name`. Ex: `SELECT pgm.pgbackrest_info()`
  - `active`
     - Boolean to determin whether maintenance will call the refresh_statement as part of regular maintenance. If false, this refresh will not run.
  - See `metric_matviews` for purpose of remaining columns
