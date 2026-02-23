@@ -5,6 +5,7 @@ FEATURES
  - All objects with the "ccp" prefix have been renamed to have the prefix "pgm". 
    - New views have been made with the "ccp" prefix to allow backward compatibility for a limited time and allow users to adjust the systems that may be injesting the old metric names.
     - BREAKING CHANGE: Grants may need to be redone for the monitoring role to properly access the new and renamed objects. See new GRANT instructions in the installations steps.
+ - Created new view/function set for pg_stat_statements. `pgm_stat_statements` will automatically handle version differences for PostgreSQL versions 14 and greater.
 
 
 2.2.0
