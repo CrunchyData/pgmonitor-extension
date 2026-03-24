@@ -1088,7 +1088,7 @@ ALTER VIEW @extschema@.ccp_stat_database RENAME TO pgm_stat_database;
 UPDATE @extschema@.metric_views SET view_name = 'pgm_stat_database' WHERE view_name = 'ccp_stat_database';
 
 ALTER VIEW @extschema@.ccp_stat_io_bgwriter RENAME TO pgm_stat_io_bgwriter;
-CREATE VIEW @extschema@.pgm_stat_io_bgwriter AS
+CREATE OR REPLACE VIEW @extschema@.pgm_stat_io_bgwriter AS
     SELECT
         writes
         , fsyncs
