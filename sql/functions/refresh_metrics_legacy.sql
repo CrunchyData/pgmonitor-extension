@@ -1,6 +1,7 @@
 CREATE FUNCTION @extschema@.refresh_metrics_legacy (p_object_schema text DEFAULT 'monitor', p_object_name text DEFAULT NULL)
     RETURNS void
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
     AS $function$
 DECLARE
 
@@ -94,3 +95,5 @@ PERFORM pg_catalog.pg_advisory_unlock(hashtext('pgmonitor refresh call'));
 RETURN;
 END
 $function$;
+/**** END FUNCTION CHANGES ****/
+

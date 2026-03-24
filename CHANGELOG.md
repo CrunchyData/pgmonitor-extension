@@ -1,3 +1,19 @@
+3.0.0
+=====
+FEATURES
+--------
+ - All objects with the "ccp" prefix have been renamed to have the prefix "pgm". 
+   - New views have been made with the "ccp" prefix to allow backward compatibility for a limited time and allow users to adjust the systems that may be injesting the old metric names.
+    - IMPORTANT NOTE: The original documentation discussed using the `pgmonitor_ext` schema. This has been changed to the `pgm` schema in the 3.0.0 documentation. There is no requirement to change the schema that the extension is installed in, but just be aware of that difference when referencing the latest documentation.
+    - BREAKING CHANGE: Grants may need to be redone for the monitoring role to properly access the new and renamed objects. See new GRANT instructions in the installations steps, making note of the schema name change.
+ - Created new view/function set for pg_stat_statements. `pgm_stat_statements` includes all columns and will automatically handle version differences for PostgreSQL versions 14 and greater.
+
+BUGFIXES
+========
+ - Ensure search paths are properly set for all functions. Ensure catalog calls in procedures are schema qualified.
+ - Use quote_identifier() function in BGW code instead of manually quoting to better avoid sql injection.
+
+
 2.2.0
 =====
 FEATURES

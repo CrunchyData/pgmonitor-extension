@@ -14,6 +14,7 @@ CREATE FUNCTION @extschema@.pg_stat_statements_func() RETURNS TABLE
     , wal_bytes numeric
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 
@@ -79,6 +80,7 @@ IF v_stat_schema IS NOT NULL THEN
     EXECUTE format('SELECT set_config(%L, %L, %L)', 'search_path', v_old_search_path, 'false');
 END IF;
 
-
 END
 $function$;
+
+

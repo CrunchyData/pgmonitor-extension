@@ -111,4 +111,5 @@ RETURN v_valid;
 END
 $function$;
 
+REVOKE ALL ON FUNCTION @extschema@.pg_hba_checksum(text) FROM PUBLIC;
 

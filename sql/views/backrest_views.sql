@@ -1,7 +1,7 @@
 -- pgBackRest views
 -- All backrest data is pulled from a refreshed table so no need for individual view entries in config table
 
-CREATE VIEW @extschema@.ccp_backrest_last_diff_backup AS
+CREATE VIEW @extschema@.pgm_backrest_last_diff_backup AS
     WITH all_backups AS (
       SELECT config_file
        , jsonb_array_elements(data) AS stanza_data
@@ -22,7 +22,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_diff_backup AS
     GROUP BY config_file, stanza, backup_data->'database'->>'repo-key';
 
 
-CREATE VIEW @extschema@.ccp_backrest_last_full_backup AS
+CREATE VIEW @extschema@.pgm_backrest_last_full_backup AS
     WITH all_backups AS (
       SELECT config_file
        , jsonb_array_elements(data) AS stanza_data
@@ -43,7 +43,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_full_backup AS
     GROUP BY config_file, stanza, backup_data->'database'->>'repo-key';
 
 
-CREATE VIEW @extschema@.ccp_backrest_last_incr_backup AS
+CREATE VIEW @extschema@.pgm_backrest_last_incr_backup AS
     WITH all_backups AS (
       SELECT config_file
        , jsonb_array_elements(data) AS stanza_data
@@ -64,7 +64,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_incr_backup AS
     GROUP BY config_file, stanza, backup_data->'database'->>'repo-key';
 
 
-CREATE VIEW @extschema@.ccp_backrest_last_info AS
+CREATE VIEW @extschema@.pgm_backrest_last_info AS
     WITH all_backups AS (
       SELECT config_file
        , jsonb_array_elements(data) AS stanza_data
@@ -104,7 +104,7 @@ CREATE VIEW @extschema@.ccp_backrest_last_info AS
     AND a.backup_data->'timestamp'->>'stop' = b.max_backup_stop;
 
 
-CREATE VIEW @extschema@.ccp_backrest_oldest_full_backup AS
+CREATE VIEW @extschema@.pgm_backrest_oldest_full_backup AS
     WITH all_backups AS (
       SELECT config_file
        , jsonb_array_elements(data) AS stanza_data

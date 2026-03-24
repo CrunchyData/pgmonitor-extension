@@ -18,7 +18,7 @@ endif
 
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
-sql/$(EXTENSION)--$(EXTVERSION).sql: $(sort $(wildcard sql/tables/*.sql)) $(sort $(wildcard sql/procedures/*.sql)) $(sort $(wildcard sql/functions/*.sql)) $(sort $(wildcard sql/matviews/*.sql)) $(sort $(wildcard sql/views/*.sql))
+sql/$(EXTENSION)--$(EXTVERSION).sql: $(sort $(wildcard sql/tables/*.sql)) $(sort $(wildcard sql/procedures/*.sql)) $(sort $(wildcard sql/functions/*.sql)) $(sort $(wildcard sql/matviews/*.sql)) $(sort $(wildcard sql/views/*.sql)) $(sort $(wildcard sql/legacy_views/*.sql))
 	cat $^ > $@
 
 DATA = $(wildcard updates/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
