@@ -4,6 +4,7 @@ CREATE FUNCTION @extschema@.pgm_stat_io_bgwriter_func() RETURNS TABLE
     , fsyncs bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 BEGIN
@@ -28,3 +29,4 @@ END IF;
 
 END
 $function$;
+

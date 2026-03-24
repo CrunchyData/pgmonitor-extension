@@ -7,6 +7,7 @@ CREATE FUNCTION @extschema@.pgm_stat_checkpointer_func() RETURNS TABLE
     , buffers_written bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 BEGIN
@@ -36,3 +37,5 @@ END IF;
 
 END
 $function$;
+
+

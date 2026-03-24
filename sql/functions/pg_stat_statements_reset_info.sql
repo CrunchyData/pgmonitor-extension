@@ -48,3 +48,4 @@ BEGIN
 END
 $function$;
 
+REVOKE ALL ON FUNCTION @extschema@.pg_stat_statements_reset_info() FROM PUBLIC;

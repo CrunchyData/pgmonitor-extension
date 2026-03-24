@@ -19,6 +19,7 @@ CREATE FUNCTION @extschema@.pgm_stat_user_tables_func() RETURNS TABLE
     , autoanalyze_count bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 BEGIN
@@ -67,5 +68,3 @@ END IF;
 
 END
 $function$;
-
-

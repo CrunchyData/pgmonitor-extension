@@ -6,6 +6,7 @@ CREATE FUNCTION @extschema@.pgm_table_size_view_choice() RETURNS TABLE
     , bytes bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 

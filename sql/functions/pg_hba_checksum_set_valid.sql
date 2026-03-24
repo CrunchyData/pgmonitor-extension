@@ -9,3 +9,6 @@ TRUNCATE @extschema@.pg_hba_checksum;
 SELECT @extschema@.pg_hba_checksum();
 
 $function$;
+
+
+REVOKE ALL ON FUNCTION @extschema@.pg_hba_checksum_set_valid() FROM PUBLIC;

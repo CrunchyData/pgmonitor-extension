@@ -8,12 +8,19 @@ ALTER FUNCTION @extschema@.ccp_stat_user_tables_func() RENAME TO pgm_stat_user_t
 ALTER FUNCTION @extschema@.ccp_stat_user_tables_view_choice() RENAME TO pgm_stat_user_tables_view_choice;
 ALTER FUNCTION @extschema@.ccp_table_size_view_choice() RENAME TO pgm_table_size_view_choice;
 
+REVOKE ALL ON FUNCTION @extschema@.pg_stat_statements_reset_info() FROM PUBLIC;
+REVOKE ALL ON FUNCTION @extschema@.pg_hba_checksum(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION @extschema@.pg_hba_checksum_set_valid() FROM PUBLIC;
+
+
+
 CREATE OR REPLACE FUNCTION @extschema@.pgm_database_size_view_choice() RETURNS TABLE
 (
     dbname name
     , bytes bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 
@@ -45,6 +52,214 @@ END
 $function$;
 
 
+CREATE OR REPLACE FUNCTION @extschema@.pgm_replication_slots_func() RETURNS TABLE
+(
+    slot_name name
+    , active int
+    , retained_bytes numeric
+    , database name
+    , slot_type text
+    , conflicting int
+    , failover int
+    , synced int
+)
+    LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
+AS $function$
+DECLARE
+BEGIN
+
+IF current_setting('server_version_num')::int >= 170000 THEN
+
+    RETURN QUERY
+    SELECT s.slot_name
+        , s.active::int
+        , pg_wal_lsn_diff(CASE WHEN pg_is_in_recovery() THEN pg_last_wal_replay_lsn() ELSE pg_current_wal_insert_lsn() END, s.restart_lsn) AS retained_bytes
+        , s.database
+        , s.slot_type
+        , s.conflicting::int
+        , s.failover::int
+        , s.synced::int
+    FROM pg_catalog.pg_replication_slots s;
+
+ELSIF current_setting('server_version_num')::int >= 160000  AND current_setting('server_version_num')::int < 170000 THEN
+
+    RETURN QUERY
+    SELECT s.slot_name
+        , s.active::int
+        , pg_wal_lsn_diff(CASE WHEN pg_is_in_recovery() THEN pg_last_wal_replay_lsn() ELSE pg_current_wal_insert_lsn() END, s.restart_lsn) AS retained_bytes
+        , s.database
+        , s.slot_type
+        , s.conflicting::int
+        , 0 AS failover
+        , 0 AS synced
+    FROM pg_catalog.pg_replication_slots s;
+
+ELSE
+
+    RETURN QUERY
+    SELECT s.slot_name
+        , s.active::int
+        , pg_wal_lsn_diff(CASE WHEN pg_is_in_recovery() THEN pg_last_wal_replay_lsn() ELSE pg_current_wal_insert_lsn() END, s.restart_lsn) AS retained_bytes
+        , s.database
+        , s.slot_type
+        , 0 AS conflicting
+        , 0 AS failover
+        , 0 AS synced
+    FROM pg_catalog.pg_replication_slots s;
+
+END IF;
+
+END
+$function$;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.pgm_stat_checkpointer_func() RETURNS TABLE
+(
+    num_timed bigint
+    , num_requested bigint
+    , write_time double precision
+    , sync_time double precision
+    , buffers_written bigint
+)
+    LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
+AS $function$
+DECLARE
+BEGIN
+
+IF current_setting('server_version_num')::int >= 170000 THEN
+
+    RETURN QUERY
+    SELECT
+        c.num_timed
+        , c.num_requested
+        , c.write_time
+        , c.sync_time
+        , c.buffers_written
+    FROM pg_catalog.pg_stat_checkpointer c;
+
+ELSE
+    RETURN QUERY
+    SELECT
+        c.checkpoints_timed AS num_timed
+        , c.checkpoints_req AS num_requested
+        , c.checkpoint_write_time AS write_time
+        , c.checkpoint_sync_time AS sync_time
+        , c.buffers_checkpoint AS buffers_written
+    FROM pg_catalog.pg_stat_bgwriter c;
+
+END IF;
+
+END
+$function$;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.pgm_stat_io_bgwriter_func() RETURNS TABLE
+(
+    writes bigint
+    , fsyncs bigint
+)
+    LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
+AS $function$
+DECLARE
+BEGIN
+
+IF current_setting('server_version_num')::int >= 170000 THEN
+
+    RETURN QUERY
+    SELECT
+        s.writes
+        , s.fsyncs
+    FROM pg_catalog.pg_stat_io s
+    WHERE backend_type = 'background writer';
+
+ELSE
+    RETURN QUERY
+    SELECT
+        s.buffers_backend AS writes
+        , s.buffers_backend_fsync AS fsyncs
+    FROM pg_catalog.pg_stat_bgwriter s;
+
+END IF;
+
+END
+$function$;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.pgm_stat_user_tables_func() RETURNS TABLE
+(
+    schemaname name
+    , relname name
+    , seq_scan bigint
+    , seq_tup_read bigint
+    , idx_scan bigint
+    , idx_tup_fetch bigint
+    , n_tup_ins bigint
+    , n_tup_upd bigint
+    , n_tup_del bigint
+    , n_tup_hot_upd bigint
+    , n_tup_newpage_upd bigint
+    , n_live_tup bigint
+    , n_dead_tup bigint
+    , vacuum_count bigint
+    , autovacuum_count bigint
+    , analyze_count bigint
+    , autoanalyze_count bigint
+)
+    LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
+AS $function$
+DECLARE
+BEGIN
+
+IF current_setting('server_version_num')::int >= 160000 THEN
+    RETURN QUERY SELECT
+        p.schemaname
+        , p.relname
+        , p.seq_scan
+        , p.seq_tup_read
+        , p.idx_scan
+        , p.idx_tup_fetch
+        , p.n_tup_ins
+        , p.n_tup_upd
+        , p.n_tup_del
+        , p.n_tup_hot_upd
+        , p.n_tup_newpage_upd
+        , p.n_live_tup
+        , p.n_dead_tup
+        , p.vacuum_count
+        , p.autovacuum_count
+        , p.analyze_count
+        , p.autoanalyze_count
+      FROM pg_catalog.pg_stat_user_tables p;
+ELSE
+    RETURN QUERY SELECT
+        p.schemaname
+        , p.relname
+        , p.seq_scan
+        , p.seq_tup_read
+        , p.idx_scan
+        , p.idx_tup_fetch
+        , p.n_tup_ins
+        , p.n_tup_upd
+        , p.n_tup_del
+        , p.n_tup_hot_upd
+        , 0::bigint AS n_tup_newpage_upd
+        , p.n_live_tup
+        , p.n_dead_tup
+        , p.vacuum_count
+        , p.autovacuum_count
+        , p.analyze_count
+        , p.autoanalyze_count
+      FROM pg_catalog.pg_stat_user_tables p;
+END IF;
+
+END
+$function$;
+
+
 CREATE OR REPLACE FUNCTION @extschema@.pgm_stat_user_tables_view_choice() RETURNS TABLE
 (
     dbname name
@@ -67,6 +282,7 @@ CREATE OR REPLACE FUNCTION @extschema@.pgm_stat_user_tables_view_choice() RETURN
     , autoanalyze_count bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 
@@ -139,6 +355,7 @@ CREATE OR REPLACE FUNCTION @extschema@.pgm_table_size_view_choice() RETURNS TABL
     , bytes bigint
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 
@@ -180,7 +397,7 @@ CREATE OR REPLACE FUNCTION @extschema@.pg_stat_statements_reset_info()
   RETURNS bigint
   LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path TO pg_catalog, pg_temp
+  SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 
@@ -227,8 +444,7 @@ END
 $function$;
 
 
--- TODO RENAME FILE
-CREATE FUNCTION @extschema@.pgm_stat_statements_func() RETURNS TABLE
+CREATE OR REPLACE FUNCTION @extschema@.pgm_stat_statements_func() RETURNS TABLE
 (
  "role" name 
  , datname name
@@ -546,6 +762,200 @@ END IF;
 
 END
 $function$;
+
+
+CREATE OR REPLACE FUNCTION @extschema@.refresh_metrics_legacy (p_object_schema text DEFAULT 'monitor', p_object_name text DEFAULT NULL)
+    RETURNS void
+    LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
+    AS $function$
+DECLARE
+
+v_adv_lock                      boolean;
+v_loop_sql                      text;
+v_refresh_statement             text;
+v_refresh_sql                   text;
+v_row                           record;
+v_runtime                       interval;
+v_start_runtime                 timestamptz;
+v_stop_runtime                  timestamptz;
+
+BEGIN
+/*
+ * Function version of refresh_metrics() procedure for PG versions less than 14 that cannot be called via BGW
+ */
+
+IF pg_catalog.pg_is_in_recovery() = TRUE THEN
+    RAISE DEBUG 'Database instance in recovery mode. Exiting without view refresh';
+    RETURN;
+END IF;
+
+v_adv_lock := pg_catalog.pg_try_advisory_lock(hashtext('pgmonitor refresh call'));
+IF v_adv_lock = false THEN
+    RAISE WARNING 'pgMonitor extension refresh already running or another session has not released its advisory lock. If you are seeing this warning repeatedly, try adjusting the interval that this procedure is called or check the runtime of refresh jobs for long runtimes.';
+    RETURN;
+END IF;
+
+v_loop_sql := format('SELECT view_schema, view_name, concurrent_refresh
+                        FROM @extschema@.metric_matviews
+                        WHERE active
+                        AND ( last_run IS NULL OR (CURRENT_TIMESTAMP - last_run) > run_interval )');
+
+IF p_object_name IS NOT NULL THEN
+    v_loop_sql := format('%s AND view_schema = %L AND view_name = %L', v_loop_sql, p_object_schema, p_object_name);
+END IF;
+
+
+FOR v_row IN EXECUTE v_loop_sql LOOP
+
+    v_start_runtime := clock_timestamp();
+    v_stop_runtime := NULL;
+
+    v_refresh_sql := 'REFRESH MATERIALIZED VIEW ';
+    IF v_row.concurrent_refresh THEN
+        v_refresh_sql := v_refresh_sql || 'CONCURRENTLY ';
+    END IF;
+    v_refresh_sql := format('%s %I.%I', v_refresh_sql, v_row.view_schema, v_row.view_name);
+    RAISE DEBUG 'pgmonitor view refresh: %', v_refresh_sql;
+    EXECUTE v_refresh_sql;
+
+    v_stop_runtime := clock_timestamp();
+    v_runtime = v_stop_runtime - v_start_runtime;
+
+    UPDATE @extschema@.metric_matviews
+    SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
+    WHERE view_schema = v_row.view_schema
+    AND view_name = v_row.view_name;
+
+END LOOP;
+
+v_loop_sql := format('SELECT table_schema, table_name, refresh_statement
+    FROM @extschema@.metric_tables
+    WHERE active
+    AND ( last_run IS NULL OR (CURRENT_TIMESTAMP - last_run) > run_interval )');
+
+IF p_object_name IS NOT NULL THEN
+    v_loop_sql := format('%s AND table_schema = %L AND table_name = %L', v_loop_sql, p_object_schema, p_object_name);
+END IF;
+
+FOR v_row IN EXECUTE v_loop_sql LOOP
+    RAISE DEBUG 'pgmonitor table refresh: %', v_row.refresh_statement;
+
+    v_start_runtime := clock_timestamp();
+    v_stop_runtime := NULL;
+
+    EXECUTE format(v_row.refresh_statement);
+
+    v_stop_runtime := clock_timestamp();
+    v_runtime = v_stop_runtime - v_start_runtime;
+
+    UPDATE @extschema@.metric_tables
+    SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
+    WHERE table_schema = v_row.table_schema
+    AND table_name = v_row.table_name;
+
+END LOOP;
+
+PERFORM pg_catalog.pg_advisory_unlock(hashtext('pgmonitor refresh call'));
+
+RETURN;
+END
+$function$;
+
+
+CREATE OR REPLACE PROCEDURE @extschema@.refresh_metrics (p_object_schema text DEFAULT 'monitor', p_object_name text DEFAULT NULL)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+
+v_adv_lock                      boolean;
+v_loop_sql                      text;
+v_refresh_statement             text;
+v_refresh_sql                   text;
+v_row                           record;
+v_runtime                       interval;
+v_start_runtime                 timestamptz;
+v_stop_runtime                  timestamptz;
+
+BEGIN
+
+IF pg_catalog.pg_is_in_recovery() = TRUE THEN
+    RAISE DEBUG 'Database instance in recovery mode. Exiting without view refresh';
+    RETURN;
+END IF;
+
+v_adv_lock := pg_catalog.pg_try_advisory_lock(hashtext('pgmonitor refresh call'));
+IF v_adv_lock = false THEN
+    RAISE WARNING 'pgMonitor extension refresh already running or another session has not released its advisory lock. If you are seeing this warning repeatedly, try adjusting the interval that this procedure is called or check the runtime of refresh jobs for long runtimes.';
+    RETURN;
+END IF;
+
+v_loop_sql := pg_catalog.format('SELECT view_schema, view_name, concurrent_refresh
+                        FROM @extschema@.metric_matviews
+                        WHERE active
+                        AND ( last_run IS NULL OR (CURRENT_TIMESTAMP - last_run) > run_interval )');
+
+IF p_object_name IS NOT NULL THEN
+    v_loop_sql := pg_catalog.format('%s AND view_schema = %L AND view_name = %L', v_loop_sql, p_object_schema, p_object_name);
+END IF;
+
+FOR v_row IN EXECUTE v_loop_sql LOOP
+
+    v_start_runtime := pg_catalog.clock_timestamp();
+    v_stop_runtime := NULL;
+
+    v_refresh_sql := 'REFRESH MATERIALIZED VIEW ';
+    IF v_row.concurrent_refresh THEN
+        v_refresh_sql := v_refresh_sql || 'CONCURRENTLY ';
+    END IF;
+    v_refresh_sql := pg_catalog.format('%s %I.%I', v_refresh_sql, v_row.view_schema, v_row.view_name);
+    RAISE DEBUG 'pgmonitor view refresh: %', v_refresh_sql;
+    EXECUTE v_refresh_sql;
+
+    v_stop_runtime := pg_catalog.clock_timestamp();
+    v_runtime = v_stop_runtime - v_start_runtime;
+
+    UPDATE @extschema@.metric_matviews
+    SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
+    WHERE view_schema = v_row.view_schema
+    AND view_name = v_row.view_name;
+
+    COMMIT;
+END LOOP;
+
+v_loop_sql := pg_catalog.format('SELECT table_schema, table_name, refresh_statement
+    FROM @extschema@.metric_tables
+    WHERE active
+    AND ( last_run IS NULL OR (CURRENT_TIMESTAMP - last_run) > run_interval )');
+
+IF p_object_name IS NOT NULL THEN
+    v_loop_sql := pg_catalog.format('%s AND table_schema = %L AND table_name = %L', v_loop_sql, p_object_schema, p_object_name);
+END IF;
+
+FOR v_row IN EXECUTE v_loop_sql LOOP
+    RAISE DEBUG 'pgmonitor table refresh: %', v_row.refresh_statement;
+
+    v_start_runtime := pg_catalog.clock_timestamp();
+    v_stop_runtime := NULL;
+
+    EXECUTE pg_catalog.format(v_row.refresh_statement);
+
+    v_stop_runtime := pg_catalog.clock_timestamp();
+    v_runtime = v_stop_runtime - v_start_runtime;
+
+    UPDATE @extschema@.metric_tables
+    SET last_run = CURRENT_TIMESTAMP, last_run_time = v_runtime
+    WHERE table_schema = v_row.table_schema
+    AND table_name = v_row.table_name;
+
+    COMMIT;
+END LOOP;
+
+PERFORM pg_catalog.pg_advisory_unlock(hashtext('pgmonitor refresh call'));
+
+END
+$$;
+
 
 /**** END FUNCTION CHANGES ****/
 

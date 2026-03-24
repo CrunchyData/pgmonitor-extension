@@ -10,6 +10,7 @@ CREATE FUNCTION @extschema@.pgm_replication_slots_func() RETURNS TABLE
     , synced int
 )
     LANGUAGE plpgsql
+    SET search_path = @extschema@, pg_catalog, pg_temp
 AS $function$
 DECLARE
 BEGIN
@@ -57,3 +58,5 @@ END IF;
 
 END
 $function$;
+
+
